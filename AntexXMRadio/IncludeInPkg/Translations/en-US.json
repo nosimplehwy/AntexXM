@@ -1,0 +1,13 @@
+{
+  "OnTextLabel": "Power On",
+  "OffTextLabel": "Power Off",
+  "MainPageTitle": "XM Radio",
+  "ChannelLabel": "Channel",
+  "ChanUpLabel": "+",
+  "ChanDnLabel": "-",
+  "CategoryLabel": "Category",
+  "CatUpLabel": "+",
+  "CatDnLabel": "-",
+  "Function1Label": "Clear",
+  "Function2Label": "Enter"
+}

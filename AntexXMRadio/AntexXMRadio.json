@@ -1,0 +1,51 @@
+{
+  "CrestronSerialDeviceApi": {
+    "DeviceSupport": {},
+    "DeviceSupport2": [],
+    "GeneralInformation": {
+      "DeviceType": "ATI Custom",
+      "Manufacturer": "Antex",
+      "BaseModel": "XM 3000",
+      "VersionDate": "2021-11-24 12:00:00.000",
+      "DriverVersion": "1.0000.0000",
+      "SdkVersion": "8.00.000.0012",
+      "Description": "XM Radio Tuner source",
+      "Guid": "CD99BA12-6F4A-43AF-9F67-A9E75AE6FA14",
+      "ExtensionDeviceData": {
+        "IsExtensionDevice": true,
+        "IsMediaDevice": false,
+        "IsMediaSource": false
+      },
+      "SupportedSeries": ["XM 3000"],
+      "SupportedModels": ["XM 3000"]
+    },
+    "Api": {
+      "Communication": {
+        "CommunicationType": 0,
+        "Protocol": 0,
+        "Baud": 256,
+        "Parity": 0,
+        "HwHandshake": 0,
+        "SwHandshake": 0,
+        "DataBits": 8,
+        "StopBits": 1,
+        "Port": 0,
+        "EnableAutoPolling": false,
+        "EnableAutoReconnect": true,
+        "TimeBetweenCommands": 250,
+        "ResponseTimeout": 3000,
+        "WaitForResponse": false,
+        "IpProtocol": 0,
+        "IsUserAdjustable": false,
+        "Authentication": {
+          "Type": "None",
+          "Required": false
+        },
+        "IsSecure": false,
+        "UserAdjustableProperties": [],
+        "DeviceId": 0
+      }
+    },
+    "UserAttributes": []
+  }
+}
