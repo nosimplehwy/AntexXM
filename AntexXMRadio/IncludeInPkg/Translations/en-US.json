@@ -9,5 +9,6 @@
   "CatUpLabel": "+",
   "CatDnLabel": "-",
   "Function1Label": "Clear",
-  "Function2Label": "Enter"
+  "Function2Label": "Enter",
+  "PresetsLabel": "Presets"
 }
