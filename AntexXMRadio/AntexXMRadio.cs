@@ -52,8 +52,6 @@ namespace AntexXMRadio
         #region Constructor
         public AntexXmRadio()
         {
-            //TODO remove this
-            EnableLogging = true;
 
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Constructor", "AntexXMRadio");
 
@@ -163,13 +161,8 @@ namespace AntexXMRadio
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Simpl Transport Initialize", "AntexXMRadio");
 
-            _transport = new SimplTransport { Send = send };
-            ConnectionTransport = _transport;
-            ConnectionTransport.LogTxAndRxAsBytes = false;
+            ConnectionTransport = new SimplTransport {Send = send};
 
-            //DeviceProtocol = new AntexXmRadioProtocol(ConnectionTransport, Id);
-            //DeviceProtocol.RxOut += SendRxOut;
-            //DeviceProtocol.Initialize(DriverData);
             _protocol = new AntexXmRadioProtocol(ConnectionTransport, Id)
             {
                 EnableLogging = InternalEnableLogging,
@@ -181,7 +174,7 @@ namespace AntexXMRadio
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
-            return _transport;
+            return ConnectionTransport as SimplTransport;
 
         }
 
@@ -193,7 +186,8 @@ namespace AntexXMRadio
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Connect", "Connect");
 
-            Connected = true;
+
+            _protocol.PowerOn();
 
         }
 
@@ -225,6 +219,17 @@ namespace AntexXMRadio
             _protocol.ChanDn();
         }
 
+        [ProgrammableOperation]
+        public void ActivateUnsolicitedFeedback()
+        {
+            _protocol.ActivateUnsolicitedFeedback();
+        }
+
+        [ProgrammableOperation]
+        public void PollZone1()
+        {
+            _protocol.PollZone1();
+        }
         #endregion Programmable Operations
 
         #region Programmable Events
@@ -263,7 +268,10 @@ namespace AntexXMRadio
 
             // Define example list 
             _presetList = CreateList(new PropertyDefinition("PresetsList", string.Empty, DevicePropertyType.ObjectList, _presetObject));
-           // _presetList.AddObject(_presetObject.ClassName);
+            foreach (var preset in _protocol.Presets)
+            {
+
+            }
 
             //Initialize property values
             _tileStatusText.Value = "Status Text";

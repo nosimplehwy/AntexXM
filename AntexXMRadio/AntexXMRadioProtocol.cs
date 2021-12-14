@@ -2,8 +2,10 @@
 using Crestron.RAD.Common.Logging;
 using Crestron.RAD.Common.Transports;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Crestron.RAD.Common.Enums;
+using Crestron.SimplSharpPro.Thermostats;
 
 namespace AntexXMRadio
 {
@@ -11,21 +13,34 @@ namespace AntexXMRadio
     {
 
         private StringBuilder _keypadNumber;
+        private StringBuilder _header;
+        private StringBuilder _data;
         private TextChangedEventArgs _currentChannelFeedback;
         private bool _powerState;
+        private const char EndOfResponse = '\r';
+        private const char StartOfResponse = '*';
+
+        private bool _findingHeader;
+        private bool _findingChannelFeedback;
+        private List<Preset> _presets;
+
 
         public event EventHandler<BoolAttributeChangedEventArgs> BoolAttributeChanged;
         public event EventHandler<StringAttributeChangedEventArgs> StringAttributeChanged;
         public event EventHandler<TextChangedEventArgs> CurrentTextChanged;
         public event EventHandler<string> KeypadTextChanged;
 
+        public List<Preset> Presets
+        {
+            get => _presets;
+            private set => _presets = value;
+        }
+
         public AntexXmRadioProtocol(ISerialTransport transport, byte id) : base(transport, id)
         {
-            EnableLogging = true;
             _keypadNumber = new StringBuilder(3);
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "AntexXMRadioProtocol", "");
-
-            PowerOn();
+            InitializePresets();
         }
 
         protected override void ConnectionChangedEvent(bool connection)
@@ -43,7 +58,6 @@ namespace AntexXMRadio
                 return;
 
         }
-
 
     
 
@@ -95,18 +109,64 @@ namespace AntexXMRadio
         public override void DataHandler(string rx)
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler", rx);
-            switch (rx)
+            foreach (var chr in rx)
             {
-                case "*PR1":
-                    _powerState = true;
-                    break;
-                case "*PR0":
-                    _powerState = false;
-                    break;
+
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                    string.Format($"Chr: {chr}"));
+                if(chr == StartOfResponse)
+                {
+                        AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                            string.Format($"Found Header"));
+                        _findingHeader = true;
+                        _data.Clear();
+                        continue;
+                }
+                if (_findingHeader == true)
+                {
+                    switch (_data.ToString())
+                    {
+                        case "PR1":
+                            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                                string.Format($"Case Power On: {_header}"));
+                            _powerState = true;
+                            _findingHeader = false;
+                            continue;
+                        case "PR0":
+                            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                                string.Format($"Case Power Off: {_header}"));
+                            _powerState = false;
+                            _findingHeader = false;
+                            continue;
+                        case "UN1":
+                            _findingChannelFeedback = true;
+                            _findingHeader = false;
+                            continue;
+                        default:
+                            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                                string.Format($"No header match found: {_header}"));
+                            continue;
+
+                    }
+                }
+                
+                
+                if (_findingChannelFeedback && chr == EndOfResponse)
+                {
+                    ProcessChannelFeedback(_data.ToString());
+                    AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                        string.Format($"Ready to process channel feedback: {_data}"));
+                    _findingChannelFeedback = false;
+                    continue;
+                }
+
+                _data.Append(chr);
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                    string.Format($"Found Channel Info: {_data}"));
 
             }
-
         }
+
 
         protected override void ChooseDeconstructMethod(ValidatedRxData validatedData)
         {
@@ -164,21 +224,30 @@ namespace AntexXMRadio
             SendCommand(command);
         }
 
-        public void Poll()
+        public void PollZone1()
         {
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "PollZone1", "");
+            var command = new CommandSet("Poll", "*QZ1", CommonCommandGroupType.Power, null, false,
+                CommandPriority.Normal, StandardCommandsEnum.AvPoll);
+            SendCommand(command);
+
         }
 
         public void ActivateUnsolicitedFeedback()
         {
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ActivateUnsolicitedFeedback", "");
+            var command = new CommandSet("PowerOn", "*UN1", CommonCommandGroupType.Power, null, false,
+                CommandPriority.Normal, StandardCommandsEnum.AvPoll);
+            SendCommand(command);
+
         }
         public void ChanUp()
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ChanUp", "");
-            //var command = new CommandSet("ChanUp", "*CU1", CommonCommandGroupType.Channel, null, false,
-            //    CommandPriority.Normal, StandardCommandsEnum.ChannelUp);
-            //SendCommand(command);
+            var command = new CommandSet("ChanUp", "*CU1", CommonCommandGroupType.Channel, null, false,
+                CommandPriority.Normal, StandardCommandsEnum.ChannelUp);
+            SendCommand(command);
 
-            SendCustomCommandValue("*CU1");
         }
 
         public void ChanDn()
@@ -264,13 +333,24 @@ namespace AntexXMRadio
 
         public void ProcessChannelFeedback(string fb)
         {
-            _currentChannelFeedback.Artist = "Artist";
-            _currentChannelFeedback.Category = "Category";
-            _currentChannelFeedback.ChannelNameNum = "000 Channel Name";
-            _currentChannelFeedback.Song = "Song Title";
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ProcessChannelFeedback", "");
+            try
+            {
+                var info = fb.Split(',');
+                _currentChannelFeedback.ChannelNameNum = string.Format($"{info[0]}: {info[2]}");
+                _currentChannelFeedback.Artist = info[3];
+                _currentChannelFeedback.Category = info[1];
+                _currentChannelFeedback.Song = info[4];
 
 
-            CurrentTextChanged?.Invoke(this, _currentChannelFeedback);
+                CurrentTextChanged?.Invoke(this, _currentChannelFeedback);
+
+
+            }
+            catch (Exception exception)
+            {
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Error, "ProcessChannelFeedback", exception.Message);
+            }
         }
 
         public void OnKeypadTextChanged(string text)
@@ -285,8 +365,42 @@ namespace AntexXMRadio
         {
             public string Name { get; set; }
             public string Channel { get; set; }
+
+            public Preset(string name, string channel)
+            {
+                Name = name;
+                Channel = channel;
+            }
         }
 
+        public void InitializePresets()
+        {
+            _presets = new List<Preset>
+            {
+                new Preset("Preset 1", "017"),
+                new Preset("Preset 2", "016"),
+                new Preset("Preset 3", "012"),
+                new Preset("Preset 4", "025"),
+                new Preset("Preset 5", "071"),
+                new Preset("Preset 6", "067"),
+                new Preset("Preset 7", "006"),
+                new Preset("Preset 8", "026"),
+                new Preset("Preset 9", "068"),
+                new Preset("Preset 10", "066"),
+                new Preset("Preset 11", "007"),
+                new Preset("Preset 12", "027"),
+                new Preset("Preset 13", "076"),
+                new Preset("Preset 14", "075"),
+                new Preset("Preset 15", "008"),
+                new Preset("Preset 16", "018"),
+                new Preset("Preset 17", "005"),
+                new Preset("Preset 18", "941"),
+                new Preset("Preset 19", "000"),
+                new Preset("Preset 20", "000"),
+
+            };
+
+        }
 
     }
 }
