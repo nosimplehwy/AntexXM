@@ -17,10 +17,6 @@ namespace AntexXMRadio
 {
     public class AntexXmRadio : AExtensionDevice, ISerialComport, ISimpl
     {
-        #region Constants
-
-
-        #endregion Constants
 
         #region Fields
 
@@ -40,6 +36,7 @@ namespace AntexXMRadio
 
         private AntexXmRadioProtocol _protocol;
 
+        private SimplTransport _transport;
 
         public event EventHandler<ValueEventArgs<string>> CommandFired;
 
@@ -150,7 +147,7 @@ namespace AntexXMRadio
             _protocol.RxOut += SendRxOut;
             _protocol.KeypadTextChanged += OnKeypadTextChanged;
             _protocol.CurrentTextChanged += OnCurrentTextChanged;
-            _protocol.IsConnectedChanged += _protocol_IsConnectedChanged;
+            _protocol.IsConnectedChanged += Protocol_IsConnectedChanged;
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
@@ -165,7 +162,9 @@ namespace AntexXMRadio
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Simpl Transport Initialize", "AntexXMRadio");
 
-            ConnectionTransport = new SimplTransport {Send = send};
+            _transport = new SimplTransport { Send = send };
+            ConnectionTransport = _transport;
+            ConnectionTransport.LogTxAndRxAsBytes = false;
 
             _protocol = new AntexXmRadioProtocol(ConnectionTransport, Id)
             {
@@ -175,19 +174,16 @@ namespace AntexXMRadio
             _protocol.RxOut += SendRxOut;
             _protocol.KeypadTextChanged += OnKeypadTextChanged;
             _protocol.CurrentTextChanged += OnCurrentTextChanged;
-            _protocol.IsConnectedChanged += _protocol_IsConnectedChanged;
+            _protocol.IsConnectedChanged += Protocol_IsConnectedChanged;
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
-            CreateDeviceDefinition();
-
-
-            return ConnectionTransport as SimplTransport;
+            return _transport;
 
 
         }
 
-        private void _protocol_IsConnectedChanged(object sender, ValueEventArgs<bool> e)
+        private void Protocol_IsConnectedChanged(object sender, ValueEventArgs<bool> e)
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "_protocol_IsConnectedChanged", e.Value.ToString());
 
@@ -196,10 +192,11 @@ namespace AntexXMRadio
 
         public override void Connect()
         {
-            //base.Connect();
+            base.Connect();
 
-            Connected = _protocol.IsConnected;
+           // Connected = _protocol.IsConnected;
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Connect", Connected.ToString());
+            _protocol.PowerOn();
 
         }
 
