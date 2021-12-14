@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <uidefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://prd-use-rad-assets.azurewebsites.net/ExtensionsSchemaDefinition_v1_0.xsd">
   <version ver="1.0" />
-  <tile status="{TileStatus}" icon="{MainIcon}" navigation="show:MainPage" showinhomepage="#false" showinroompage="#true"/>
-  <layouts>
-    <layout id="MainPage" title="^MainPageTitle" isdefaultlayout="#true">
+  <tile status="{TileStatus}" icon="{MainIcon}" navigation="show:PresetsPage" showinhomepage="#false" showinroompage="#true"/>
+<layouts>
+    <layout id="MainPage" title="^MainPageTitle" isdefaultlayout="#false">
        <controls>
          <textdisplay id="NowPlayingText" title="{ChannelNameNum}" line1label="{Category}" line2label="{Artist}" line3label="{Song}" />
+          <listbutton id="PresetsList" label="^PresetsLabel" source="{PresetsList}" itemlabel="{.Name}" action="command:SelectPreset" actionparameters="{.Channel}" />
          <controlgroup>
           <textdisplay id="ChannelText" title="^ChannelLabel"/>
          <buttongroup>
@@ -27,11 +28,6 @@
 
         </controls>
 
-    </layout>
-    <layout id="PresetsPage" title="^PresetsPageTitle" isdefaultlayout="#false">
-      <controls>
-        <listbutton id="PresetsList" label="^PresetsLabel" source="{PresetsList}" itemlabel="{.Name}" action="command:SelectPreset" actionparameters="{.Channel}" />
-      </controls>
     </layout>
   </layouts>
   <alerts>

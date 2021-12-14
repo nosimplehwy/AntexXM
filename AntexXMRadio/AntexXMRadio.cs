@@ -5,6 +5,7 @@ using Crestron.RAD.Common.Logging;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Crestron.RAD.Common.Attributes.Programming;
 using Crestron.RAD.Common.Events;
 using Crestron.RAD.Common.Transports;
@@ -39,8 +40,6 @@ namespace AntexXMRadio
 
         private AntexXmRadioProtocol _protocol;
 
-        private SimplTransport _transport;
-
 
         public event EventHandler<ValueEventArgs<string>> CommandFired;
 
@@ -53,9 +52,9 @@ namespace AntexXMRadio
         public AntexXmRadio()
         {
 
+            EnableLogging = true;
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Constructor", "AntexXMRadio");
 
-            CreateDeviceDefinition();
 
         }
 
@@ -99,6 +98,7 @@ namespace AntexXMRadio
                 case "SelectPreset":
                     AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Switch",
                         string.Format($"{command}: {parameters[0]}"));
+                    _protocol.ChannelSelect(new StringBuilder(parameters[0]));
                     break;
                 default:
                         AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Switch", "Unhandled command!");
@@ -150,12 +150,16 @@ namespace AntexXMRadio
             _protocol.RxOut += SendRxOut;
             _protocol.KeypadTextChanged += OnKeypadTextChanged;
             _protocol.CurrentTextChanged += OnCurrentTextChanged;
+            _protocol.IsConnectedChanged += _protocol_IsConnectedChanged;
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
+            CreateDeviceDefinition();
+
+
         }
 
-      
+
 
         public SimplTransport Initialize(Action<string, object[]> send)
         {
@@ -171,25 +175,35 @@ namespace AntexXMRadio
             _protocol.RxOut += SendRxOut;
             _protocol.KeypadTextChanged += OnKeypadTextChanged;
             _protocol.CurrentTextChanged += OnCurrentTextChanged;
+            _protocol.IsConnectedChanged += _protocol_IsConnectedChanged;
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
+            CreateDeviceDefinition();
+
+
             return ConnectionTransport as SimplTransport;
+
 
         }
 
+        private void _protocol_IsConnectedChanged(object sender, ValueEventArgs<bool> e)
+        {
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "_protocol_IsConnectedChanged", e.Value.ToString());
 
-        #endregion  Transport
-
+            Connected = e.Value;
+        }
 
         public override void Connect()
         {
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Connect", "Connect");
+            //base.Connect();
 
-
-            _protocol.PowerOn();
+            Connected = _protocol.IsConnected;
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "Connect", Connected.ToString());
 
         }
+
+        #endregion  Transport
 
 
 
@@ -270,8 +284,13 @@ namespace AntexXMRadio
             _presetList = CreateList(new PropertyDefinition("PresetsList", string.Empty, DevicePropertyType.ObjectList, _presetObject));
             foreach (var preset in _protocol.Presets)
             {
+                var tempObject = CreateObject(_presetObject);
+                tempObject.GetValue<string>("Name").Value = preset.Name;
+                tempObject.GetValue<string>("Channel").Value = preset.Channel;
+                _presetList.AddObject(tempObject);
 
             }
+
 
             //Initialize property values
             _tileStatusText.Value = "Status Text";

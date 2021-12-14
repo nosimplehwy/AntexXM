@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Crestron.RAD.Common.Enums;
+using Crestron.RAD.Common.Events;
 using Crestron.SimplSharpPro.Thermostats;
 
 namespace AntexXMRadio
@@ -13,7 +14,6 @@ namespace AntexXMRadio
     {
 
         private StringBuilder _keypadNumber;
-        private StringBuilder _header;
         private StringBuilder _data;
         private TextChangedEventArgs _currentChannelFeedback;
         private bool _powerState;
@@ -24,11 +24,12 @@ namespace AntexXMRadio
         private bool _findingChannelFeedback;
         private List<Preset> _presets;
 
-
         public event EventHandler<BoolAttributeChangedEventArgs> BoolAttributeChanged;
         public event EventHandler<StringAttributeChangedEventArgs> StringAttributeChanged;
         public event EventHandler<TextChangedEventArgs> CurrentTextChanged;
         public event EventHandler<string> KeypadTextChanged;
+        public event EventHandler<ValueEventArgs<bool>> IsConnectedChanged;
+
 
         public List<Preset> Presets
         {
@@ -39,27 +40,27 @@ namespace AntexXMRadio
         public AntexXmRadioProtocol(ISerialTransport transport, byte id) : base(transport, id)
         {
             _keypadNumber = new StringBuilder(3);
+            _data = new StringBuilder();
+            _currentChannelFeedback = new TextChangedEventArgs();
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "AntexXMRadioProtocol", "");
             InitializePresets();
         }
 
+
+        //protected override void ConnectionChanged(bool connection)
+        //{
+        //    AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Error, "ConnectionChanged", connection.ToString());
+        //    base.ConnectionChanged(connection);
+
+        //    IsConnectedChanged?.Invoke(this,new ValueEventArgs<bool>(connection));
+        //}
+
         protected override void ConnectionChangedEvent(bool connection)
         {
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Error, "ConnectionChangedEvent",
-                connection.ToString());
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Error, "ConnectionChangedEvent", connection.ToString());
+            IsConnectedChanged?.Invoke(this, new ValueEventArgs<bool>(connection));
         }
 
-        protected override void ConnectionChanged(bool connection)
-        {
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Error, "ConnectionChanged", connection.ToString());
-            base.ConnectionChanged(connection);
-
-            if (!IsConnected)
-                return;
-
-        }
-
-    
 
         public override void SetUserAttribute(string attributeId, string attributeValue)
         {
@@ -109,12 +110,16 @@ namespace AntexXMRadio
         public override void DataHandler(string rx)
         {
             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler", rx);
+
             foreach (var chr in rx)
             {
-
                 AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                    string.Format($"Chr: {chr}"));
-                if(chr == StartOfResponse)
+                    string.Format($"Append: {chr} to {_data}"));
+
+                _data.Append(chr);
+
+
+                if (chr == StartOfResponse)
                 {
                         AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
                             string.Format($"Found Header"));
@@ -122,47 +127,46 @@ namespace AntexXMRadio
                         _data.Clear();
                         continue;
                 }
+
                 if (_findingHeader == true)
                 {
                     switch (_data.ToString())
                     {
                         case "PR1":
                             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                                string.Format($"Case Power On: {_header}"));
+                                string.Format($"Case Power On: {_data}"));
                             _powerState = true;
                             _findingHeader = false;
                             continue;
                         case "PR0":
                             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                                string.Format($"Case Power Off: {_header}"));
+                                string.Format($"Case Power Off: {_data}"));
                             _powerState = false;
                             _findingHeader = false;
                             continue;
                         case "UN1":
+                            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                                string.Format($"Channel Info: {_data}"));
                             _findingChannelFeedback = true;
                             _findingHeader = false;
                             continue;
                         default:
                             AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                                string.Format($"No header match found: {_header}"));
+                                string.Format($"No header match found: {_data}"));
                             continue;
 
                     }
                 }
-                
-                
-                if (_findingChannelFeedback && chr == EndOfResponse)
-                {
-                    ProcessChannelFeedback(_data.ToString());
-                    AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                        string.Format($"Ready to process channel feedback: {_data}"));
-                    _findingChannelFeedback = false;
-                    continue;
-                }
 
-                _data.Append(chr);
+
+                if (!_findingChannelFeedback || chr != EndOfResponse) continue;
                 AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                    string.Format($"Found Channel Info: {_data}"));
+                    string.Format($"Ready to process channel feedback: {_data}"));
+                ProcessChannelFeedback(_data.ToString());
+                _findingChannelFeedback = false;
+                continue;
+
+
 
             }
         }
@@ -333,7 +337,7 @@ namespace AntexXMRadio
 
         public void ProcessChannelFeedback(string fb)
         {
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ProcessChannelFeedback", "");
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ProcessChannelFeedback", fb);
             try
             {
                 var info = fb.Split(',');
