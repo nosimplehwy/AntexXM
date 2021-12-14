@@ -22,7 +22,6 @@ namespace AntexXMRadio
 
         private bool _findingHeader;
         private bool _findingChannelFeedback;
-        private List<Preset> _presets;
 
         public event EventHandler<BoolAttributeChangedEventArgs> BoolAttributeChanged;
         public event EventHandler<StringAttributeChangedEventArgs> StringAttributeChanged;
@@ -31,11 +30,7 @@ namespace AntexXMRadio
         public event EventHandler<ValueEventArgs<bool>> IsConnectedChanged;
 
 
-        public List<Preset> Presets
-        {
-            get => _presets;
-            private set => _presets = value;
-        }
+        public List<Preset> Presets { get; private set; }
 
         public AntexXmRadioProtocol(ISerialTransport transport, byte id) : base(transport, id)
         {
@@ -162,6 +157,7 @@ namespace AntexXMRadio
                     case "UN1":
                         AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
                             string.Format($"Channel Info: {_data}"));
+                        _data.Clear();
                         _findingChannelFeedback = true;
                         _findingHeader = false;
                         break;
@@ -386,7 +382,7 @@ namespace AntexXMRadio
 
         public void InitializePresets()
         {
-            _presets = new List<Preset>
+            Presets = new List<Preset>
             {
                 new Preset("Preset 1", "017"),
                 new Preset("Preset 2", "016"),

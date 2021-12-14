@@ -178,6 +178,9 @@ namespace AntexXMRadio
             _protocol.Initialize(DriverData);
             DeviceProtocol = _protocol;
 
+            CreateDeviceDefinition();
+
+
             return _transport;
 
 
