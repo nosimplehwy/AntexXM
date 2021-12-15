@@ -20,15 +20,12 @@ namespace AntexXMRadio
         private const char EndOfResponse = '\r';
         private const char StartOfResponse = '*';
 
-        private bool _findingHeader;
-        private bool _findingChannelFeedback;
 
         public event EventHandler<BoolAttributeChangedEventArgs> BoolAttributeChanged;
         public event EventHandler<StringAttributeChangedEventArgs> StringAttributeChanged;
         public event EventHandler<TextChangedEventArgs> CurrentTextChanged;
         public event EventHandler<string> KeypadTextChanged;
         public event EventHandler<ValueEventArgs<bool>> IsConnectedChanged;
-
 
         public List<Preset> Presets { get; private set; }
 
@@ -112,72 +109,65 @@ namespace AntexXMRadio
             {
                 ConnectionChanged(true);
             }
+
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
+                string.Format($"Append: {rx} to {_data}"));
+
             foreach (var chr in rx)
             {
+                if (chr == StartOfResponse)
+                {
+                    _data.Clear();
+                }
 
-                ValidateData(chr);
+                if (chr == EndOfResponse)
+                {
+                    ValidateData(_data.ToString());
+                    _data.Clear();
+
+                }
+                _data.Append(chr);
 
             }
+
         }
 
-        private void ValidateData(char rx)
+        private void ValidateData(string data)
         {
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-    string.Format($"Append: {rx} to {_data}"));
 
-            _data.Append(rx);
+            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ValidateData",
+                string.Format($"{data}"));
 
+            if(data == null)
+                return;
 
-            if (rx == StartOfResponse)
+            if (data.Contains("UN1") || data.Contains("CU1") || data.Contains("CD1") || data.Contains("CGU1") || data.Contains("CGD1") || data.Contains("CH1"))
             {
-                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                    string.Format($"Found Header"));
-                _findingHeader = true;
-                _data.Clear();
-                
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ValidateData",
+                    string.Format($"Channel Info: {data}"));
+
+                ProcessChannelFeedback(data);
                 return;
             }
 
-            if (_findingHeader == true)
+            if (data.Contains("PR1"))
             {
-                switch (_data.ToString())
-                {
-                    case "PR1":
-                        AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                            string.Format($"Case Power On: {_data}"));
-                        _powerState = true;
-                        _findingHeader = false;
-                        break;
-                    case "PR0":
-                        AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                            string.Format($"Case Power Off: {_data}"));
-                        _powerState = false;
-                        _findingHeader = false;
-                        break;
-                    case "UN1":
-                        AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                            string.Format($"Channel Info: {_data}"));
-                        _data.Clear();
-                        _findingChannelFeedback = true;
-                        _findingHeader = false;
-                        break;
-                    default:
-                        AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                            string.Format($"No header match found: {_data}"));
-                        break;
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ValidateData",
+                    string.Format($"Case Power On: {data}"));
+                _powerState = true;
+                PollZone1();
 
-                }
             }
 
-
-            if (!_findingChannelFeedback || rx != EndOfResponse) return;
-            AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "DataHandler",
-                string.Format($"Ready to process channel feedback: {_data}"));
-            ProcessChannelFeedback(_data.ToString());
-            _findingChannelFeedback = false;
-            return;
+            if (data.Contains("PR0"))
+            {
+                AntexXmRadioLog.Log(EnableLogging, Log, LoggingLevel.Debug, "ValidateData",
+                    string.Format($"Case Power Off: {data}"));
+                _powerState = false;
+            }
 
         }
+
 
 
         protected override bool CanSendCommand(CommandSet commandSet)
@@ -344,10 +334,13 @@ namespace AntexXMRadio
             try
             {
                 var info = fb.Split(',');
-                _currentChannelFeedback.ChannelNameNum = string.Format($"{info[0]}: {info[2]}");
-                _currentChannelFeedback.Artist = info[3];
-                _currentChannelFeedback.Category = info[1];
-                _currentChannelFeedback.Song = info[4];
+
+                if (_currentChannelFeedback.ChannelNameNum == string.Format($"{info[1]}: {info[3]}")) return;
+
+                _currentChannelFeedback.ChannelNameNum = string.Format($"{info[1]}: {info[3]}");
+                _currentChannelFeedback.Artist = info[4];
+                _currentChannelFeedback.Category = info[2];
+                _currentChannelFeedback.Song = info[5];
 
 
                 CurrentTextChanged?.Invoke(this, _currentChannelFeedback);
