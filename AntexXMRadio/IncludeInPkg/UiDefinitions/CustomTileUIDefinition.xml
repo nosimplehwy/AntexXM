@@ -3,19 +3,23 @@
   <version ver="1.0" />
   <tile status="{ChannelNameNum}" icon="{MainIcon}" navigation="show:MainPage" showinhomepage="#false" showinroompage="#true"/>
 <layouts>
-    <layout id="MainPage" title="^MainPageTitle" isdefaultlayout="#false">
+  <layout id="MainPage" title="^MainPageTitle" isdefaultlayout="#true">
        <controls>
          <textdisplay id="NowPlayingText" title="{ChannelNameNum}" line1label="{Category}" line2label="{Artist}" line3label="{Song}" />
-          <listbutton id="PresetsList" label="^PresetsLabel" source="{PresetsList}" itemlabel="{.Name}" action="command:SelectPreset" actionparameters="{.Channel}" />
          <controlgroup>
-          <textdisplay id="ChannelText" title="^ChannelLabel"/>
+          <listbutton id="PresetsSelectList" label="^PresetsSelectLabel" source="{PresetsList}" itemlabel="{.Name}" action="command:SelectPreset" actionparameters="{.Channel}" />
+          <listbutton id="PresetsStoreList" label="^PresetsStoreLabel" source="{PresetsList}" itemlabel="{.Name}" action="command:StorePreset"/>
+      </controlgroup>  
+      <statusandbutton id="statusandbuttonid" label="{PresetObject.Name}" status="{devicestatus}" buttonlabel="^start" buttonaction="command:start" actionparameters="{selectedprogram}" navigation="show:inprogresspage" navigationparameters="{selectedprogram}" />
+      <controlgroup>
+          <textdisplay id="ChannelText" title="^ChannelTitle" line1label="^ChannelLabel" /> 
          <buttongroup>
             <button id="ChanUpButton" label="^ChanUpLabel" action="command:ChanUpCommand"/>
             <button id="ChanDnButton" label="^ChanDnLabel" action="command:ChanDnCommand"/>
           </buttongroup>          
         </controlgroup>  
         <controlgroup>
-          <textdisplay id="CategoryText" title="^CategoryLabel"/>
+          <textdisplay id="CategoryText" title="^CategoryTitle" line1label="^CategoryLabel" />
           <buttongroup>
             <button id="CatUpButton" label="^CatUpLabel" action="command:CatUpCommand"/>
             <button id="CatDnButton" label="^CatDnLabel" action="command:CatDnCommand"/>
@@ -25,11 +29,10 @@
             <textdisplay id="KeypadText" title="{KeypadText}"/>
             <keypad id="Keypad" buttonpressaction="command:KeypadButtonPressed" functionbutton1enabled="#true" functionbutton2enabled ="#true" functionbutton1label="^Function1Label" functionbutton2label ="^Function2Label" />        
           </controlgroup>  
-
         </controls>
-
     </layout>
   </layouts>
   <alerts>
+    <confirmation id="PresetSaveConfirmation" messagelabel="^PresetSaveConfirmationMesage" cancelbuttonlabel="^PresetSaveCancelLabel" proceedbuttonlabel="^PresetSaveProceedLabel" proceedaction="command:PresetSaveConfirm" actionparameters="$PresetObject.Id" navigation="show:settings" navigationparameters="$selectedObject" inputparameters="$selectedObject"/>
   </alerts>
 </uidefinition>

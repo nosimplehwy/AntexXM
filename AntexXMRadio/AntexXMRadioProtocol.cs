@@ -7,6 +7,7 @@ using System.Text;
 using Crestron.RAD.Common.Enums;
 using Crestron.RAD.Common.Events;
 using Crestron.SimplSharpPro.Thermostats;
+using Independentsoft.Exchange;
 
 namespace AntexXMRadio
 {
@@ -28,7 +29,7 @@ namespace AntexXMRadio
         public event EventHandler<ValueEventArgs<bool>> IsConnectedChanged;
 
         public List<Preset> Presets { get; private set; }
-
+        public string CurrentChannel { get; private set; }
         public AntexXmRadioProtocol(ISerialTransport transport, byte id) : base(transport, id)
         {
             _keypadNumber = new StringBuilder(3);
@@ -335,8 +336,8 @@ namespace AntexXMRadio
             {
                 var info = fb.Split(',');
 
-                if (_currentChannelFeedback.ChannelNameNum == string.Format($"{info[1]}: {info[3]}")) return;
-
+                if (CurrentChannel == info[1]) return;
+                CurrentChannel = info[1];
                 _currentChannelFeedback.ChannelNameNum = string.Format($"{info[1]}: {info[3]}");
                 _currentChannelFeedback.Artist = info[4];
                 _currentChannelFeedback.Category = info[2];

@@ -277,16 +277,18 @@ namespace AntexXMRadio
 
             // Define example object 
             _presetObject = CreateClassDefinition("PresetObject");
+            _presetObject.AddProperty(new PropertyDefinition("Id", string.Empty, DevicePropertyType.Int32));
             _presetObject.AddProperty(new PropertyDefinition("Name", string.Empty, DevicePropertyType.String));
             _presetObject.AddProperty(new PropertyDefinition("Channel", string.Empty, DevicePropertyType.String));
 
             // Define example list 
             _presetList = CreateList(new PropertyDefinition("PresetsList", string.Empty, DevicePropertyType.ObjectList, _presetObject));
-            foreach (var preset in _protocol.Presets)
+            for (int i = 0; i < _protocol.Presets.Count; i++)
             {
                 var tempObject = CreateObject(_presetObject);
-                tempObject.GetValue<string>("Name").Value = preset.Name;
-                tempObject.GetValue<string>("Channel").Value = preset.Channel;
+                tempObject.GetValue<int>("Id").Value = i + 1;
+                tempObject.GetValue<string>("Name").Value = _protocol.Presets[i].Name;
+                tempObject.GetValue<string>("Channel").Value = _protocol.Presets[i].Channel;
                 _presetList.AddObject(tempObject);
 
             }
@@ -304,11 +306,14 @@ namespace AntexXMRadio
             Commit();
         }
 
-
-
+       SaveSe
 
         #endregion Private Methods
 
+        private void SavePreset(int id, string channel)
+        {
+            _presetList()
+        }
         #region Helper Methods
         private void OnKeypadTextChanged(object sender, string e)
         {
